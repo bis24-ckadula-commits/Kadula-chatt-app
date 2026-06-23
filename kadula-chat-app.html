@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cross-Device Chat App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .chat-container {
+            width: 420px;
+            height: 700px;
+            max-height: 100vh;
+            background: #1a1a2e;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #2a2a4e;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #16213e, #0f3460);
+            color: #e0e0ff;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a2a4e;
+            flex-shrink: 0;
+        }
+
+        .chat-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #a8a8ff;
+        }
+
+        .connection-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: #2a2a5e;
+            color: #ff6b6b;
+        }
+
+        .connection-status.connected {
+            background: #1a3a2e;
+            color: #4ade80;
+        }
+
+        .peer-info {
+            padding: 8px 20px;
+            background: #0f0f1a;
+            border-bottom: 1px solid #1a1a3e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #6a6a8a;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .peer-info .peer-id {
+            color: #a8a8ff;
+            font-family: monospace;
+            font-size: 11px;
+            background: #1a1a2e;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #0f0f1a;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            cursor: default;
+        }
+
+        .message.received {
+            background: #1a1a3e;
+            color: #d0d0ff;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #2a2a5e;
+        }
+
+        .message.sent {
+            background: linear-gradient(135deg, #4a4a8a, #6a4a9a);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message .time {
+            font-size: 10px;
+            opacity: 0.6;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .message.sent .time {
+            opacity: 0.8;
+        }
+
+        .message.voice-message {
+            background: #1a1a3e;
+            border: 1px solid #3a3a7e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .message.voice-message:hover {
+            border-color: #6a4a9a;
+            transform: scale(1.01);
+        }
+
+        .message.voice-message.sent {
+            background: linear-gradient(135deg, #3a3a7a, #5a3a8a);
+            border: 1px solid #6a4a9a;
+        }
+
+        .voice-message .voice-content {
+            display: none;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #3a3a6e;
+        }
+
+        .voice-message.expanded .voice-content {
+            display: block;
+        }
+
+        .voice-message .voice-indicator {
+            font-size: 12px;
+            color: #4ade80;
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        .voice-message .lock-icon {
+            font-size: 12px;
+            opacity: 0.5;
+            margin-left: 6px;
+        }
+
+        .voice-play-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 50%;
+            transition: background 0.2s;
+            color: #a8a8ff;
+        }
+
+        .voice-play-btn:hover {
+            background: rgba(168, 168, 255, 0.1);
+        }
+
+        .voice-duration {
+            font-size: 12px;
+            margin-left: 6px;
+            color: #a8a8ff;
+        }
+
+        .voice-download-btn {
+            background: none;
+            border: 1px solid #3a3a6e;
+            color: #a8a8ff;
+            padding: 2px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-left: 8px;
+            transition: all 0.3s;
+        }
+
+        .voice-download-btn:hover {
+            background: #2a2a5e;
+        }
+
+        .double-click-hint {
+            font-size: 10px;
+            opacity: 0.4;
+            display: none;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .input-area {
+            padding: 12px 16px;
+            background: #0f0f1a;
+            border-top: 1px solid #1a1a3e;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 8px 14px;
+            border: 2px solid #1a1a3e;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+            background: #1a1a2e;
+            color: #d0d0ff;
+            min-width: 0;
+        }
+
+        .text-input:focus {
+            border-color: #4a4a8a;
+            box-shadow: 0 0 20px rgba(74, 74, 138, 0.3);
+        }
+
+        .text-input::placeholder {
+            color: #4a4a6a;
+        }
+
+        .text-input.recording-active {
+            border-color: #4ade80;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
+        }
+
+        .text-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .emoji-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            transition: background 0.2s;
+            color: #a8a8ff;
+            flex-shrink: 0;
+        }
+
+        .emoji-btn:hover {
+            background: rgba(168, 168, 255, 0.1);
+        }
+
+        .emoji-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #4a4a8a, #6a4a9a);
+            border: none;
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(74, 74, 138, 0.4);
+        }
+
+        .send-btn:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .recording-badge {
+            display: none;
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #4ade80;
+            color: #0f0f1a;
+            font-size: 8px;
+            padding: 2px 5px;
+            border-radius: 8px;
+            font-weight: bold;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .recording-badge.active {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hidden-recording-indicator {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(74, 222, 128, 0.05);
+            border: 1px solid rgba(74, 222, 128, 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            color: #4ade80;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.5;
+        }
+
+        .hidden-recording-indicator.active {
+            display: block;
+        }
+
+        /* Scrollbar styling */
+        .messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages::-webkit-scrollbar-thumb {
+            background: #2a2a5e;
+            border-radius: 2px;
+        }
+
+        .connection-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .connection-modal-content {
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 450px;
+            width: 100%;
+            border: 1px solid #2a2a5e;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .connection-modal h2 {
+            color: #a8a8ff;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+
+        .connection-modal p {
+            color: #8a8aaa;
+            font-size: 14px;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .connection-modal input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #2a2a5e;
+            border-radius: 8px;
+            background: #0f0f1a;
+            color: #d0d0ff;
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        .connection-modal input:focus {
+            border-color: #4a4a8a;
+        }
+
+        .connection-modal input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .connection-modal .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .connection-modal button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 100px;
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #4a4a8a, #6a4a9a);
+            color: white;
+        }
+
+        .btn-connect:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(74, 74, 138, 0.4);
+        }
+
+        .btn-connect:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-username {
+            background: #1a3a2e;
+            color: #4ade80;
+            border: 1px solid #2a5a4e;
+        }
+
+        .btn-username:hover:not(:disabled) {
+            background: #1a4a3e;
+        }
+
+        .btn-username:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .connection-modal .status-message {
+            background: #0f0f1a;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: #8a8aaa;
+            font-size: 12px;
+            margin: 8px 0 12px 0;
+            text-align: center;
+            border: 1px solid #2a2a5e;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-word;
+        }
+
+        .connection-modal .status-message.success {
+            color: #4ade80;
+            border-color: #2a5a4e;
+        }
+
+        .connection-modal .status-message.error {
+            color: #ff6b6b;
+            border-color: #5a2a2a;
+        }
+
+        .connection-modal .status-message.waiting {
+            color: #ffd93d;
+            border-color: #5a4a2a;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .online-users {
+            background: #0f0f1a;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #2a2a5e;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .online-users .user-item {
+            color: #8a8aaa;
+            font-size: 12px;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+
+        .online-users .user-item:hover {
+            background: #1a1a3e;
+        }
+
+        .online-users .user-item .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #4ade80;
+            display: inline-block;
+        }
+
+        .online-users .user-item .status-dot.offline {
+            background: #ff6b6b;
+        }
+
+        .online-users-label {
+            font-size: 11px;
+            color: #6a6a8a;
+            margin-bottom: 4px;
+        }
+
+        .online-users-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .refresh-users-btn {
+            background: none;
+            border: 1px solid #2a2a5e;
+            color: #a8a8ff;
+            padding: 2px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        .refresh-users-btn:hover {
+            background: #2a2a5e;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #2a2a5e;
+            border-top: 2px solid #a8a8ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 4px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .connection-modal-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Connection Modal -->
+    <div class="connection-modal" id="connectionModal">
+        <div class="connection-modal-content">
+            <h2>👋 Welcome to Chat</h2>
+            <p>Choose a username and connect with friends across devices!</p>
+            
+            <input 
+                type="text" 
+                id="usernameInput" 
+                placeholder="Choose your username..."
+                maxlength="20"
+                autocomplete="off"
+            />
+            
+            <div class="online-users" id="onlineUsers">
+                <div class="online-users-header">
+                    <div class="online-users-label">👥 Online Users</div>
+                    <button class="refresh-users-btn" id="refreshUsersBtn">🔄 Refresh</button>
+                </div>
+                <div id="userList">
+                    <div class="user-item" style="color: #6a6a8a; font-style: italic; cursor: default;">
+                        <span class="loading-spinner"></span> Loading users...
+                    </div>
+                </div>
+            </div>
+
+            <input 
+                type="text" 
+                id="targetUserInput" 
+                placeholder="Enter friend's username to connect..."
+                maxlength="20"
+                autocomplete="off"
+                disabled
+            />
+            
+            <div class="status-message" id="statusMessage">💡 Enter your username to get started</div>
+            
+            <div class="btn-group">
+                <button class="btn-username" id="registerBtn">📝 Register Username</button>
+                <button class="btn-connect" id="connectBtn" disabled>🔗 Connect</button>
+            </div>
+            
+            <p style="font-size: 11px; color: #4a4a6a; margin-top: 12px; text-align: center;">
+                💡 Both users must register first, then one connects to the other
+            </p>
+        </div>
+    </div>
+
+    <!-- Hidden recording indicator -->
+    <div class="hidden-recording-indicator" id="hiddenIndicator">⚡</div>
+
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div>
+                <h2>💬 Secure Chat</h2>
+                <div id="peerNameDisplay" style="font-size: 12px; color: #8a8aff; margin-top: 2px;"></div>
+            </div>
+            <span class="connection-status" id="connectionStatus">● Disconnected</span>
+        </div>
+
+        <!-- Peer Info -->
+        <div class="peer-info">
+            <span>Your username: <span class="peer-id" id="localPeerId">Not registered</span></span>
+            <span style="color: #4a4a6a;">Connected to: <span id="connectedToDisplay">None</span></span>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="messages" id="messages">
+            <div class="message received" style="background: rgba(26, 26, 46, 0.5); border: 1px solid #1a1a3e; opacity: 0.7;">
+                <p>👋 Welcome! Register a username to start chatting</p>
+                <span class="time">System</span>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <button class="emoji-btn" id="emojiBtn" disabled>😊</button>
+            <input 
+                type="text" 
+                id="textInput" 
+                placeholder="Register and connect to start chatting..." 
+                class="text-input"
+                disabled
+            />
+            <button class="send-btn" id="sendBtn" disabled>
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+                </svg>
+                <span class="recording-badge" id="recordingBadge">🎙️</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Include PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    
+    <!-- Include Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIGURATION - REPLACE WITH YOUR OWN!
+        // ============================================================
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDgLF26ouV22e8Xz94zdGzOzCtlPDxJLbA",
+  authDomain: "kadula-chat-app-ad420.firebaseapp.com",
+  projectId: "kadula-chat-app-ad420",
+  storageBucket: "kadula-chat-app-ad420.firebasestorage.app",
+  messagingSenderId: "1088389126268",
+  appId: "1:1088389126268:web:48b81d15142a2d4c72d1f9"
+};
+
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ============================================================
+        // MAIN APPLICATION CLASS
+        // ============================================================
+        class P2PCrossDeviceChat {
+            constructor() {
+                // DOM elements
+                this.messages = document.getElementById('messages');
+                this.textInput = document.getElementById('textInput');
+                this.sendBtn = document.getElementById('sendBtn');
+                this.recordingBadge = document.getElementById('recordingBadge');
+                this.hiddenIndicator = document.getElementById('hiddenIndicator');
+                this.emojiBtn = document.getElementById('emojiBtn');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.localPeerId = document.getElementById('localPeerId');
+                this.connectedToDisplay = document.getElementById('connectedToDisplay');
+                this.peerNameDisplay = document.getElementById('peerNameDisplay');
+                
+                // Modal elements
+                this.modal = document.getElementById('connectionModal');
+                this.registerBtn = document.getElementById('registerBtn');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.usernameInput = document.getElementById('usernameInput');
+                this.targetUserInput = document.getElementById('targetUserInput');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.userList = document.getElementById('userList');
+                this.refreshUsersBtn = document.getElementById('refreshUsersBtn');
+
+                // State
+                this.isRecording = false;
+                this.mediaRecorder = null;
+                this.audioChunks = [];
+                this.recordingTimer = null;
+                this.seconds = 0;
+                this.stream = null;
+                this.audioBlob = null;
+                this.recordingStartedFromInput = false;
+
+                // PeerJS state
+                this.peer = null;
+                this.isConnected = false;
+                this.myPeerId = null;
+                this.myUsername = null;
+                this.connectedUsername = null;
+                this.activeConnection = null;
+                this.registeredUsers = {};
+                this.userRef = null;
+                this.isRegistered = false;
+                this.isConnecting = false;
+                this.reconnectTimeout = null;
+
+                // Bind events
+                this.textInput.addEventListener('focus', () => this.handleInputFocus());
+                this.textInput.addEventListener('blur', () => this.handleInputBlur());
+                this.sendBtn.addEventListener('click', () => this.handleSend());
+                this.textInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSend();
+                    }
+                });
+                this.emojiBtn.addEventListener('click', () => this.insertEmoji());
+
+                // Modal events
+                this.registerBtn.addEventListener('click', () => this.registerUsername());
+                this.connectBtn.addEventListener('click', () => this.connectToUser());
+                this.refreshUsersBtn.addEventListener('click', () => this.loadOnlineUsers());
+                this.usernameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.registerUsername();
+                });
+                this.targetUserInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.connectToUser();
+                });
+
+                // Voice message click (5 clicks to reveal)
+                this.messages.addEventListener('click', (e) => {
+                    const voiceMessage = e.target.closest('.voice-message');
+                    if (voiceMessage) {
+                        voiceMessage.clickCount = (voiceMessage.clickCount || 0) + 1;
+                        
+                        if (voiceMessage.clickCount === 1) {
+                            voiceMessage.clickTimer = setTimeout(() => {
+                                voiceMessage.clickCount = 0;
+                            }, 1000);
+                        }
+                        
+                        if (voiceMessage.clickCount === 5) {
+                            voiceMessage.clickCount = 0;
+                            clearTimeout(voiceMessage.clickTimer);
+                            this.toggleVoiceMessage(voiceMessage);
+                        }
+                    }
+                });
+
+                this.scrollToBottom();
+
+                // Initialize PeerJS
+                this.initializePeer();
+                
+                // Load online users
+                this.loadOnlineUsers();
+
+                // Handle visibility change (reconnect if needed)
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        // Page hidden - do nothing
+                    } else {
+                        // Page visible again - refresh
+                        if (this.isRegistered) {
+                            this.updateOnlineStatus(true);
+                            this.loadOnlineUsers();
+                        }
+                    }
+                });
+            }
+
+            // --- PeerJS Initialization ---
+
+            initializePeer() {
+                try {
+                    this.peer = new Peer({
+                        debug: 2
+                    });
+
+                    this.peer.on('open', (id) => {
+                        this.myPeerId = id;
+                        console.log('✅ Peer ID:', id);
+                        this.updateStatusMessage('💡 Enter a username to register', '');
+                        this.registerBtn.disabled = false;
+                    });
+
+                    this.peer.on('connection', (conn) => {
+                        this.handleIncomingConnection(conn);
+                    });
+
+                    this.peer.on('error', (err) => {
+                        console.error('❌ Peer error:', err);
+                        if (err.type === 'unavailable-id') {
+                            // This can happen if PeerJS can't get an ID
+                            // Retry after a delay
+                            setTimeout(() => {
+                                this.initializePeer();
+                            }, 3000);
+                        } else {
+                            this.updateStatusMessage('⚠️ Connection error: ' + err.message, 'error');
+                        }
+                    });
+
+                    this.peer.on('disconnected', () => {
+                        console.log('⚠️ Peer disconnected, reconnecting...');
+                        this.peer.reconnect();
+                    });
+                } catch (error) {
+                    console.error('❌ Failed to initialize Peer:', error);
+                    setTimeout(() => {
+                        this.initializePeer();
+                    }, 3000);
+                }
+            }
+
+            // --- Firebase: Load Online Users ---
+
+            loadOnlineUsers() {
+                const usersRef = database.ref('users');
+                usersRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.registeredUsers = data || {};
+                    this.renderUserList();
+                    
+                    // Update connect button state
+                    if (this.isRegistered) {
+                        this.checkTargetUser();
+                    }
+                }, (error) => {
+                    console.error('❌ Error loading users:', error);
+                    this.userList.innerHTML = '<div class="user-item" style="color: #ff6b6b; font-style: italic; cursor: default;">⚠️ Error loading users</div>';
+                });
+            }
+
+            renderUserList() {
+                const users = Object.keys(this.registeredUsers);
+                this.userList.innerHTML = '';
+                
+                if (users.length === 0) {
+                    this.userList.innerHTML = '<div class="user-item" style="color: #6a6a8a; font-style: italic; cursor: default;">No users online</div>';
+                    return;
+                }
+
+                let hasOnlineUsers = false;
+                users.forEach(username => {
+                    const userData = this.registeredUsers[username];
+                    const isOnline = userData && userData.online === true;
+                    const isSelf = username === this.myUsername;
+                    
+                    if (isOnline) hasOnlineUsers = true;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'user-item';
+                    item.style.cursor = (isOnline && !isSelf) ? 'pointer' : 'default';
+                    
+                    // Determine status text
+                    let statusText = 'Offline';
+                    let statusColor = '#ff6b6b';
+                    if (isOnline) {
+                        statusText = 'Online 🟢';
+                        statusColor = '#4ade80';
+                    }
+                    
+                    item.innerHTML = `
+                        <span class="status-dot ${isOnline ? '' : 'offline'}"></span>
+                        <span style="flex: 1;">${username} ${isSelf ? '(You)' : ''}</span>
+                        <span style="font-size: 10px; color: ${statusColor};">
+                            ${statusText}
+                        </span>
+                    `;
+                    
+                    // Click to fill target input (only for online users)
+                    if (isOnline && !isSelf) {
+                        item.addEventListener('click', () => {
+                            this.targetUserInput.value = username;
+                            this.targetUserInput.disabled = false;
+                            this.connectBtn.disabled = false;
+                            this.updateStatusMessage(`💡 Ready to connect to "${username}"`, 'success');
+                            // Focus the input
+                            this.targetUserInput.focus();
+                        });
+                    }
+                    
+                    this.userList.appendChild(item);
+                });
+
+                if (!hasOnlineUsers) {
+                    // Add a message if no online users
+                    const msg = document.createElement('div');
+                    msg.className = 'user-item';
+                    msg.style.color = '#6a6a8a';
+                    msg.style.fontStyle = 'italic';
+                    msg.style.cursor = 'default';
+                    msg.textContent = 'No other users online';
+                    this.userList.appendChild(msg);
+                }
+            }
+
+            checkTargetUser() {
+                const target = this.targetUserInput.value.trim();
+                if (target && target !== this.myUsername) {
+                    const userData = this.registeredUsers[target];
+                    if (userData && userData.online === true) {
+                        this.connectBtn.disabled = false;
+                        this.updateStatusMessage(`💡 Ready to connect to "${target}"`, 'success');
+                    } else {
+                        this.connectBtn.disabled = true;
+                        this.updateStatusMessage(`⚠️ User "${target}" is not online`, 'error');
+                    }
+                }
+            }
+
+            // --- Firebase: Username Registration ---
+
+            registerUsername() {
+                const username = this.usernameInput.value.trim();
+                if (!username) {
+                    this.updateStatusMessage('⚠️ Please enter a username', 'error');
+                    return;
+                }
+
+                if (username.length < 2) {
+                    this.updateStatusMessage('⚠️ Username must be at least 2 characters', 'error');
+                    return;
+                }
+
+                if (username.length > 20) {
+                    this.updateStatusMessage('⚠️ Username must be less than 20 characters', 'error');
+                    return;
+                }
+
+                // Check if username is already taken
+                if (this.registeredUsers[username] && this.registeredUsers[username].online === true) {
+                    this.updateStatusMessage('⚠️ Username is already taken!', 'error');
+                    return;
+                }
+
+                this.myUsername = username;
+                this.localPeerId.textContent = username;
+                this.peerNameDisplay.textContent = `@${username}`;
+                this.isRegistered = true;
+
+                // Register in Firebase
+                const userRef = database.ref('users/' + username);
+                
+                // Set up disconnect cleanup (this runs even if the app closes)
+                userRef.onDisconnect().update({
+                    online: false,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                });
+
+                // Set user data
+                userRef.set({
+                    peerId: this.myPeerId,
+                    online: true,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                }).then(() => {
+                    console.log('✅ Registered in Firebase');
+                }).catch((error) => {
+                    console.error('❌ Firebase registration error:', error);
+                    this.updateStatusMessage('⚠️ Failed to register. Check Firebase config.', 'error');
+                    this.isRegistered = false;
+                    return;
+                });
+
+                this.userRef = userRef;
+                this.registerBtn.textContent = '✅ Registered';
+                this.registerBtn.disabled = true;
+                this.usernameInput.disabled = true;
+                this.targetUserInput.disabled = false;
+                this.connectBtn.disabled = true; // Will be enabled when a valid target is selected
+                this.textInput.placeholder = 'Click here to start typing...';
+
+                this.updateStatusMessage(`✅ Registered as "${username}"! Click an online user to connect`, 'success');
+                this.addSystemMessage(`👋 You are now registered as "${username}"`);
+                this.addSystemMessage(`📡 Your Peer ID: ${this.myPeerId}`);
+                
+                // Refresh user list
+                this.loadOnlineUsers();
+                
+                // Enable emoji
+                this.emojiBtn.disabled = false;
+
+                // Check if target input has a valid user
+                this.checkTargetUser();
+            }
+
+            updateOnlineStatus(online) {
+                if (this.userRef && this.isRegistered) {
+                    this.userRef.update({
+                        online: online,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            }
+
+            // --- Connection Logic ---
+
+            connectToUser() {
+                const targetUsername = this.targetUserInput.value.trim();
+                if (!targetUsername) {
+                    this.updateStatusMessage('⚠️ Please enter or select a username to connect to', 'error');
+                    return;
+                }
+
+                if (targetUsername === this.myUsername) {
+                    this.updateStatusMessage('⚠️ You cannot connect to yourself!', 'error');
+                    return;
+                }
+
+                // Look up the user in Firebase
+                const userData = this.registeredUsers[targetUsername];
+                if (!userData || !userData.online) {
+                    this.updateStatusMessage(`⚠️ User "${targetUsername}" is not online`, 'error');
+                    this.loadOnlineUsers(); // Refresh
+                    return;
+                }
+
+                const targetPeerId = userData.peerId;
+                if (!targetPeerId) {
+                    this.updateStatusMessage(`⚠️ User "${targetUsername}" has no Peer ID`, 'error');
+                    return;
+                }
+
+                if (this.isConnecting) {
+                    return;
+                }
+
+                this.isConnecting = true;
+                this.updateStatusMessage(`🔗 Connecting to "${targetUsername}"...`, 'waiting');
+                this.connectBtn.disabled = true;
+
+                this.initiateConnection(targetUsername, targetPeerId);
+            }
+
+            initiateConnection(targetUsername, targetPeerId) {
+                try {
+                    const conn = this.peer.connect(targetPeerId, {
+                        reliable: true
+                    });
+
+                    // Set a timeout for connection attempt
+                    const timeoutId = setTimeout(() => {
+                        if (!this.isConnected) {
+                            this.isConnecting = false;
+                            this.connectBtn.disabled = false;
+                            this.updateStatusMessage(`⏰ Connection timed out. Try again.`, 'error');
+                        }
+                    }, 15000);
+
+                    conn.on('open', () => {
+                        clearTimeout(timeoutId);
+                        this.handleNewConnection(conn, targetUsername);
+                    });
+
+                    conn.on('error', (err) => {
+                        clearTimeout(timeoutId);
+                        console.error('❌ Connection error:', err);
+                        this.isConnecting = false;
+                        this.connectBtn.disabled = false;
+                        this.updateStatusMessage(`❌ Failed to connect to "${targetUsername}"`, 'error');
+                    });
+                } catch (error) {
+                    console.error('❌ Initiate connection error:', error);
+                    this.isConnecting = false;
+                    this.connectBtn.disabled = false;
+                    this.updateStatusMessage(`❌ Connection failed: ${error.message}`, 'error');
+                }
+            }
+
+            handleIncomingConnection(conn) {
+                // Wait for the other user to identify themselves
+                let identityReceived = false;
+                
+                const identityHandler = (data) => {
+                    if (data.type === 'identify' && !identityReceived) {
+                        identityReceived = true;
+                        const username = data.username;
+                        this.handleNewConnection(conn, username);
+                    }
+                };
+
+                conn.on('data', identityHandler);
+
+                // Send our identity
+                conn.send({
+                    type: 'identify',
+                    username: this.myUsername
+                });
+            }
+
+            handleNewConnection(conn, username) {
+                this.activeConnection = conn;
+                this.isConnected = true;
+                this.connectedUsername = username;
+                this.connectedToDisplay.textContent = username;
+                this.isConnecting = false;
+                
+                // Update UI
+                this.connectionStatus.textContent = '● Connected';
+                this.connectionStatus.className = 'connection-status connected';
+                this.textInput.disabled = false;
+                this.sendBtn.disabled = false;
+                this.emojiBtn.disabled = false;
+                this.modal.style.display = 'none';
+
+                this.addSystemMessage(`✅ Connected to "${username}"!`);
+
+                // Remove old data listeners and set new ones
+                conn.removeAllListeners('data');
+                
+                conn.on('data', (data) => {
+                    if (data.type === 'identify') return;
+                    this.handleIncomingData(data);
+                });
+
+                conn.on('close', () => {
+                    this.handleDisconnect(username);
+                });
+
+                conn.on('error', (err) => {
+                    console.error('Connection error:', err);
+                    this.handleDisconnect(username);
+                });
+
+                // Send a welcome message
+                conn.send({
+                    type: 'system',
+                    text: `👋 ${this.myUsername} has connected!`,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+            }
+
+            handleDisconnect(username) {
+                this.isConnected = false;
+                this.activeConnection = null;
+                this.connectionStatus.textContent = '● Disconnected';
+                this.connectionStatus.className = 'connection-status';
+                this.textInput.disabled = true;
+                this.sendBtn.disabled = true;
+                this.emojiBtn.disabled = true;
+                this.connectedToDisplay.textContent = 'None';
+                this.isConnecting = false;
+                
+                this.addSystemMessage(`❌ Disconnected from "${username}"`);
+                
+                // Show modal to reconnect
+                setTimeout(() => {
+                    this.modal.style.display = 'flex';
+                    this.textInput.disabled = true;
+                    this.sendBtn.disabled = true;
+                    this.connectBtn.disabled = false;
+                    this.targetUserInput.value = '';
+                    this.updateStatusMessage('💡 Click an online user to connect', '');
+                    this.loadOnlineUsers();
+                }, 2000);
+            }
+
+            // --- Message Handling ---
+
+            handleIncomingData(data) {
+                if (data.type === 'message') {
+                    this.addMessageToUI({
+                        id: data.id || Date.now(),
+                        type: data.messageType || 'combined',
+                        text: data.text || '',
+                        audioData: data.audioData || null,
+                        audioUrl: null,
+                        duration: data.duration || 0,
+                        hasAudio: data.hasAudio || false,
+                        timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        sent: false,
+                        sender: data.sender || 'Friend'
+                    });
+                } else if (data.type === 'system') {
+                    this.addSystemMessage(data.text);
+                }
+            }
+
+            async sendMessage(text, audioBlob, duration) {
+                if (!this.isConnected || !this.activeConnection) {
+                    this.addSystemMessage('⚠️ Not connected. Cannot send message.');
+                    return;
+                }
+
+                let audioData = null;
+                let hasAudio = false;
+
+                if (audioBlob && audioBlob.size > 0) {
+                    try {
+                        audioData = await this.blobToBase64(audioBlob);
+                        hasAudio = true;
+                    } catch (error) {
+                        console.error('❌ Failed to encode audio:', error);
+                    }
+                }
+
+                const messageData = {
+                    type: 'message',
+                    messageType: 'combined',
+                    text: text || '',
+                    audioData: audioData,
+                    hasAudio: hasAudio,
+                    duration: duration || 0,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    id: Date.now(),
+                    sender: this.myUsername
+                };
+
+                try {
+                    this.activeConnection.send(messageData);
+                } catch (error) {
+                    console.error('❌ Failed to send message:', error);
+                    this.addSystemMessage('⚠️ Failed to send message. Reconnecting...');
+                    this.handleDisconnect(this.connectedUsername);
+                    return;
+                }
+
+                let audioUrl = null;
+                if (hasAudio && audioBlob) {
+                    audioUrl = URL.createObjectURL(audioBlob);
+                }
+
+                this.addMessageToUI({
+                    id: messageData.id,
+                    type: 'combined',
+                    text: text || '',
+                    audioUrl: audioUrl,
+                    duration: duration || 0,
+                    hasAudio: hasAudio,
+                    timestamp: messageData.timestamp,
+                    sent: true
+                });
+            }
+
+            // --- Recording Logic ---
+
+            async handleInputFocus() {
+                if (!this.isConnected) return;
+                
+                if (!this.isRecording) {
+                    try {
+                        await this.startRecording();
+                        this.recordingStartedFromInput = true;
+                        this.textInput.classList.add('recording-active');
+                        this.textInput.placeholder = '🎙️ Recording... Click send to stop';
+                    } catch (error) {
+                        console.error('❌ Failed to start recording:', error);
+                        this.textInput.placeholder = '❌ Microphone error';
+                    }
+                }
+            }
+
+            handleInputBlur() {
+                if (this.isRecording && this.recordingStartedFromInput) {
+                    this.textInput.placeholder = '🎙️ Still recording...';
+                }
+            }
+
+            async startRecording() {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    });
+
+                    this.mediaRecorder = new MediaRecorder(this.stream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+
+                    this.audioChunks = [];
+                    this.isRecording = true;
+                    this.seconds = 0;
+                    this.audioBlob = null;
+
+                    this.recordingBadge.classList.add('active');
+                    this.hiddenIndicator.classList.add('active');
+
+                    this.recordingTimer = setInterval(() => {
+                        this.seconds++;
+                    }, 1000);
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.audioChunks.push(event.data);
+                        }
+                    };
+
+                    this.mediaRecorder.start(1000);
+
+                    if (navigator.vibrate) navigator.vibrate(30);
+
+                } catch (error) {
+                    console.error('❌ Microphone error:', error);
+                    this.isRecording = false;
+                    this.textInput.placeholder = '❌ Microphone access denied';
+                    throw error;
+                }
+            }
+
+            async stopRecording() {
+                return new Promise((resolve) => {
+                    if (!this.mediaRecorder || !this.isRecording) {
+                        resolve();
+                        return;
+                    }
+
+                    this.mediaRecorder.onstop = async () => {
+                        clearInterval(this.recordingTimer);
+                        this.recordingBadge.classList.remove('active');
+                        this.hiddenIndicator.classList.remove('active');
+                        this.textInput.classList.remove('recording-active');
+                        this.isRecording = false;
+                        this.recordingStartedFromInput = false;
+
+                        this.audioBlob = new Blob(this.audioChunks, { 
+                            type: 'audio/webm;codecs=opus' 
+                        });
+
+                        if (this.stream) {
+                            this.stream.getTracks().forEach(track => track.stop());
+                            this.stream = null;
+                        }
+
+                        resolve();
+                    };
+
+                    this.mediaRecorder.stop();
+                });
+            }
+
+            async handleSend() {
+                if (!this.isConnected) {
+                    this.addSystemMessage('⚠️ Not connected. Please connect first.');
+                    return;
+                }
+
+                const text = this.textInput.value.trim();
+
+                if (this.isRecording) {
+                    await this.stopRecording();
+                }
+
+                if (text || (this.audioBlob && this.audioBlob.size > 0)) {
+                    await this.sendMessage(text, this.audioBlob, this.seconds);
+                    this.textInput.value = '';
+                    this.textInput.placeholder = 'Click here to start typing...';
+                    this.audioBlob = null;
+                } else {
+                    // Empty message - do nothing
+                    this.textInput.focus();
+                }
+            }
+
+            // --- UI Helpers ---
+
+            addMessageToUI(data) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${data.sent ? 'sent' : 'received'}`;
+
+                let audioHTML = '';
+                let audioUrl = data.audioUrl;
+
+                if (data.hasAudio && !audioUrl && data.audioData) {
+                    try {
+                        const binary = atob(data.audioData);
+                        const array = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) {
+                            array[i] = binary.charCodeAt(i);
+                        }
+                        const blob = new Blob([array], { type: 'audio/webm;codecs=opus' });
+                        audioUrl = URL.createObjectURL(blob);
+                    } catch (e) {
+                        console.error('❌ Failed to process audio:', e);
+                    }
+                }
+
+                if (data.hasAudio && audioUrl) {
+                    messageDiv.classList.add('voice-message');
+                    audioHTML = `
+                        <div class="voice-content">
+                            <button class="voice-play-btn" data-audio="${audioUrl}">▶</button>
+                            <span class="voice-duration">${this.formatDuration(data.duration)}</span>
+                            <button class="voice-download-btn" data-audio="${audioUrl}">⬇️</button>
+                            <span class="lock-icon">🔒</span>
+                        </div>
+                    `;
+                }
+
+                const textContent = data.text || (data.hasAudio ? '🎙️ Voice message' : '');
+                const senderInfo = data.sender && !data.sent ? `📨 ${data.sender}: ` : '';
+                
+                messageDiv.innerHTML = `
+                    <p>${senderInfo}${this.escapeHtml(textContent)}</p>
+                    ${data.hasAudio ? `<span class="voice-indicator">🎙️ ${data.duration}s</span>` : ''}
+                    <span class="time">${data.timestamp}</span>
+                    ${audioHTML}
+                    ${data.hasAudio ? `<span class="double-click-hint">🔒 Fifth-click to reveal audio</span>` : ''}
+                `;
+
+                if (data.hasAudio && audioUrl) {
+                    messageDiv.dataset.audioUrl = audioUrl;
+                    messageDiv.dataset.duration = data.duration;
+                }
+
+                this.messages.appendChild(messageDiv);
+                this.scrollToBottom();
+
+                if (!data.sent && navigator.vibrate) {
+                    navigator.vibrate(30);
+                }
+
+                // Set up audio controls
+                if (data.hasAudio && audioUrl) {
+                    setTimeout(() => {
+                        const playBtn = messageDiv.querySelector('.voice-play-btn');
+                        if (playBtn) {
+                            let audio = null;
+                            let isPlaying = false;
+
+                            playBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (!audio) {
+                                    audio = new Audio(playBtn.dataset.audio || audioUrl);
+                                    audio.onended = () => {
+                                        playBtn.textContent = '▶';
+                                        isPlaying = false;
+                                    };
+                                    audio.onerror = () => {
+                                        playBtn.textContent = '▶';
+                                        isPlaying = false;
+                                    };
+                                }
+
+                                if (isPlaying) {
+                                    audio.pause();
+                                    playBtn.textContent = '▶';
+                                    isPlaying = false;
+                                } else {
+                                    audio.play().catch(() => {
+                                        playBtn.textContent = '▶';
+                                        isPlaying = false;
+                                    });
+                                    playBtn.textContent = '⏸';
+                                    isPlaying = true;
+                                }
+                            });
+                        }
+
+                        const downloadBtn = messageDiv.querySelector('.voice-download-btn');
+                        if (downloadBtn) {
+                            downloadBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const url = downloadBtn.dataset.audio || audioUrl;
+                                if (url) {
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `voice-message-${Date.now()}.webm`;
+                                    a.click();
+                                }
+                            });
+                        }
+                    }, 100);
+                }
+            }
+
+            toggleVoiceMessage(messageElement) {
+                messageElement.classList.toggle('expanded');
+                
+                if (messageElement.classList.contains('expanded')) {
+                    setTimeout(() => {
+                        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            }
+
+            addSystemMessage(text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message received';
+                messageDiv.style.background = 'rgba(26, 26, 46, 0.5)';
+                messageDiv.style.border = '1px solid #1a1a3e';
+                messageDiv.style.fontSize = '12px';
+                messageDiv.style.opacity = '0.7';
+                messageDiv.style.cursor = 'default';
+                messageDiv.innerHTML = `
+                    <p>${this.escapeHtml(text)}</p>
+                    <span class="time">System</span>
+                `;
+                this.messages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            updateStatusMessage(text, type = '') {
+                this.statusMessage.textContent = text;
+                this.statusMessage.className = 'status-message';
+                if (type) {
+                    this.statusMessage.classList.add(type);
+                }
+            }
+
+            // --- Utility Functions ---
+
+            blobToBase64(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        try {
+                            const base64 = reader.result.split(',')[1];
+                            resolve(base64);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
+
+            formatDuration(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return mins > 0 ? `${mins}:${String(secs).padStart(2, '0')}` : `${secs}s`;
+            }
+
+            escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            insertEmoji() {
+                if (!this.isConnected) return;
+                const emojis = ['😊', '😂', '❤️', '🔥', '👍', '🎉', '✨', '💪', '🤔', '😅', '🥳', '👏', '💀', '🥺', '😤', '🙈', '💯', '🌟'];
+                const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                this.textInput.value += emoji;
+                this.textInput.focus();
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messages.scrollTop = this.messages.scrollHeight;
+                }, 100);
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new P2PCrossDeviceChat();
+        });
+    </script>
+</body>
+</html>
